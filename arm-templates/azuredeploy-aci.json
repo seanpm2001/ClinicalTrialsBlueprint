@@ -1,0 +1,208 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "structuringAciName": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+		"structuringImageName": {
+      "type": "string"
+		},
+		"env": {
+      "type": "string"
+		},
+    "queryCountry": {
+      "type": "string"
+    },
+    "queryPhases": {
+      "type": "string"
+    },
+    "queryRecruitment": {
+      "type": "string"
+    },
+    "querySponsors": {
+      "type": "string"
+    },
+    "queryConditions": {
+      "type": "string"
+    },
+		"keyVaultAddress": {
+			"type":"string"
+		},
+		"mapsApiKey": {
+			"type":"string"
+		},
+		"fhirAddress": {
+			"type":"string"
+		},
+		"ayalonAddress": {
+			"type":"string"
+		},
+		"cttiHost": {
+			"type":"string"
+		},
+		"cttiUserName": {
+			"type":"string"
+		},
+		"appInsightsInstrumentationKey": {
+			"type":"string"
+		},
+		"redisAddress": {
+			"type":"string"
+		},
+		"finishedNotifyAddress": {
+      "type":"string"
+    },
+		"constituencyParserImageName": {
+      "type":"string"
+    },
+		"acrServer": {
+      "type": "string"
+    },
+    "acrUsername": {
+      "type": "string"
+    },
+    "acrPassword": {
+      "type": "securestring"
+    },
+		"resourceTags": {
+      "type": "object"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[parameters('structuringAciName')]",
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2018-10-01",
+      "tags": "[parameters('resourceTags')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "containers": [
+          {
+            "name": "structuring",
+            "properties": {
+              "image": "[parameters('structuringImageName')]",
+              "command": [
+                "dotnet",
+                "ClinicalTrialsStructuring.dll"
+              ],
+              "environmentVariables": [
+                {
+                  "name": "ASPNETCORE_ENVIRONMENT",
+                  "value": "[parameters('env')]"
+                },
+                {
+                  "name": "query__country",
+                  "value": "[parameters('queryCountry')]"
+                },
+                {
+                  "name": "query__phases",
+                  "value": "[parameters('queryPhases')]"
+                },
+                {
+                  "name": "query__recruitment",
+                  "value": "[parameters('queryRecruitment')]"
+                },
+                {
+                  "name": "query__sponsors",
+                  "value": "[parameters('querySponsors')]"
+                },
+                {
+                  "name": "query__conditions",
+                  "value": "[parameters('queryConditions')]"
+                },
+                {
+                  "name": "key_vault__address",
+									"value": "[parameters('keyVaultAddress')]"
+                  // "value": "[concat('https://', variables('keyVaultName'), '.vault.azure.net/')]"
+                },
+                {
+                  "name": "azure_maps__api_key",
+									"value": "[parameters('mapsApiKey')]"
+                  // "value": "[listKeys(variables('mapsServiceName'),'2018-05-01').primaryKey]"
+                },
+                {
+                  "name": "fhir__address",
+									"value": "[parameters('fhirAddress')]"
+                  // "value": "[variables('fhirAddress')]"
+                },
+                {
+                  "name": "ayalon__address",
+									"value": "[parameters('ayalonAddress')]"
+                  // "value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/') ]"
+                },
+                {
+                  "name": "ctti__host",
+									"value": "[parameters('cttiHost')]"
+
+                  // "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"              
+                },
+                {
+                  "name": "ctti__user_name",
+									"value": "[parameters('cttiUserName')]"
+                  // "value": "[variables('ctti_user_name')]"
+                },
+                {
+                  "name":"application_insight__instrumentation_key",
+									"value": "[parameters('appInsightsInstrumentationKey')]"
+                  // "value":"[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"
+                },
+                {
+                  "name":"redis__address",
+									"value": "[parameters('redisAddress')]"
+                  // "value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"
+                },
+                {
+                  "name":"structuring__finished_notifier_address",
+                  "value":"[parameters('finishedNotifyAddress')]"
+                }
+              ],
+              "resources": {
+                "requests": {
+                  "cpu": 2,
+                  "memoryInGB": 4
+                }
+              }
+            }
+          },
+          {
+            "name": "constituency-parser",
+            "properties": {
+              "image": "[parameters('constituencyParserImageName')]",
+			  			"environmentVariables": [
+                {
+                  "name": "APP_INSIGHT_KEY",
+									"value": "[parameters('appInsightsInstrumentationKey')]"
+                  // "value": "[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"
+                }
+							],
+              "resources": {
+                "requests": {
+                  "cpu": 2,
+                  "memoryInGB": 4
+                }
+              }
+            }
+          }
+        ],
+        "imageRegistryCredentials": [
+          {
+            "server": "[parameters('acrServer')]",
+            "username": "[parameters('acrUsername')]",
+            "password": "[parameters('acrPassword')]"
+          }
+        ],
+        "restartPolicy": "OnFailure",
+        "osType": "Linux"
+      }
+    }
+  ],
+  "outputs": {}
+}

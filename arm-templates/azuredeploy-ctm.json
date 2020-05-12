@@ -140,7 +140,8 @@
       "disq":"[concat('https://',variables('disqualificationWebAppBaseName'),'-s.azurewebsites.net')]", 
       "fhir": "[concat('https://',parameters('fhirSecondaryServerName'),'.azurewebsites.net/')]"      
     },
-    "allowedPaths": "/status,/,/ready,/swagger/*,/metadata"
+    "allowedPaths": "/status,/,/ready,/swagger/*,/metadata",
+    "aci_template_uri": "https://github.com/microsoft/ClinicalTrialsBlueprint/arm-templates/azuredeploy-aci.json"
   },
   "resources": [
     {
@@ -854,6 +855,45 @@
       }
     },
     {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2019-10-01",
+      "name": "linkedTemplate",
+      "dependsOn": [
+        "[resourceId('Microsoft.Maps/accounts', variables('mapsServiceName'))]",
+        "[resourceId('Microsoft.Insights/components/', variables('insightsName'))]"      
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('aci_template_uri')]",
+          "contentVersion":"1.0.0.0"
+        },
+        "parameters": {
+          "structuringAciName": {"value": "[variables('structuringName')]"},
+          "resourceTags": {"value": "[parameters('resourceTags')]"},
+          "location": {"value": "[resourceGroup().location]"},
+          "structuringImageName": {"value": "[variables('structuringImageName')]"},
+          "env": {"value": "[parameters('env')]"},
+          "queryCountry": {"value": "[parameters('queryCountry')]"},
+          "queryPhases": {"value": "[parameters('queryPhases')]"},
+          "queryRecruitment": {"value": "[parameters('queryRecruitment')]"},
+          "querySponsors": {"value": "[parameters('querySponsors')]"},
+          "queryConditions": {"value": "[parameters('queryConditions')]"},
+          "keyVaultAddress": {"value": "[concat('https://', variables('keyVaultName'), '.vault.azure.net/')]"},
+          "mapsApiKey": {"value": "[listKeys(variables('mapsServiceName'),'2018-05-01').primaryKey]"},
+          "fhirAddress": {"value": "[if(parameters('isSecondary'), concat('https://',variables('gatewayWebAppName'),'-secondary','.azurewebsites.net/fhir/'),
+                                concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/fhir/'))]"},
+          "ayalonAddress": {"value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/')]"},
+          "cttiHost": {"value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"},
+          "cttiUserName":{"value": "[variables('ctti_user_name')]"}, 
+          "appInsightsInstrumentationKey": {"value":"[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"},
+          "redisAddress": {"value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"},
+          "finishedNotifyAddress": {"value": "[parameters('finishedNotifyAddress')]"}
+        }
+      }
+    },
+    {
+      delete this and see ACI works fine
       "name": "[variables('structuringName')]",
       "type": "Microsoft.ContainerInstance/containerGroups",
       "apiVersion": "2018-10-01",
@@ -916,11 +956,11 @@
                 },
                 {
                   "name": "ayalon__address",
-                  "value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/') ]"
+                  "value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/')]"
                 },
                 {
                   "name": "ctti__host",
-                  "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"              
+                  "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]" 
                 },
                 {
                   "name": "ctti__user_name",
@@ -1449,53 +1489,53 @@
             "sslEnforcement": "Disabled"
         }
     },
-	{
-    "name": "[concat('plan-auto-scale',variables('suffix'))]",
-    "type": "Microsoft.Insights/autoscaleSettings",
-	 "apiVersion": "2015-04-01",
-    "location": "[resourceGroup().location]",
-    "tags": "[parameters('resourceTags')]",
-    "properties": {
+    {
+      "name": "[concat('plan-auto-scale',variables('suffix'))]",
+      "type": "Microsoft.Insights/autoscaleSettings",
+      "apiVersion": "2015-04-01",
+      "location": "[resourceGroup().location]",
+      "tags": "[parameters('resourceTags')]",
+      "properties": {
         "name": "[concat('plan-auto-scale',variables('suffix'))]",
         "enabled": true,
         "targetResourceUri": "[resourceId('Microsoft.Web/serverfarms', variables('ctmServicePlan'))]",
         "profiles": [
-            {
-                "name": "Auto created scale condition",
-                "capacity": {
-                    "minimum": "1",
-                    "maximum": "2",
-                    "default": "1"
+          {
+            "name": "Auto created scale condition",
+            "capacity": {
+              "minimum": "1",
+              "maximum": "2",
+              "default": "1"
+            },
+            "rules": [
+              {
+                "scaleAction": {
+                  "direction": "Increase",
+                  "type": "ChangeCount",
+                  "value": "1",
+                  "cooldown": "PT5M"
                 },
-                "rules": [
-                    {
-                        "scaleAction": {
-                            "direction": "Increase",
-                            "type": "ChangeCount",
-                            "value": "1",
-                            "cooldown": "PT5M"
-                        },
-                        "metricTrigger": {
-                            "metricName": "CpuPercentage",
-                            "metricNamespace": "microsoft.web/serverfarms",
-                            "metricResourceUri": "[resourceId('Microsoft.Web/serverfarms', variables('ctmServicePlan'))]",
-                            "operator": "GreaterThan",
-                            "statistic": "Average",
-                            "threshold": 70,
-                            "timeAggregation": "Average",
-                            "timeGrain": "PT1M",
-                            "timeWindow": "PT5M",
-                            "Dimensions": [],
-                            "dividePerInstance": false
-                        }
-                    }
-                ]
-            }
+                "metricTrigger": {
+                  "metricName": "CpuPercentage",
+                  "metricNamespace": "microsoft.web/serverfarms",
+                  "metricResourceUri": "[resourceId('Microsoft.Web/serverfarms', variables('ctmServicePlan'))]",
+                  "operator": "GreaterThan",
+                  "statistic": "Average",
+                  "threshold": 70,
+                  "timeAggregation": "Average",
+                  "timeGrain": "PT1M",
+                  "timeWindow": "PT5M",
+                  "Dimensions": [],
+                  "dividePerInstance": false
+                }
+              }
+            ]
+          }
         ],
         "notifications": [],
-        "targetResourceLocation": "[resourceGroup().location]",
+        "targetResourceLocation": "[resourceGroup().location]"
+      }
     }
-	}
   ],
   "outputs":{
     "proxyApiKey": {
