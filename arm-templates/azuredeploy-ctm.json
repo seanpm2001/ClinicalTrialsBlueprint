@@ -113,12 +113,16 @@
     "gatewayWebAppName": "[concat(parameters('serviceName'),'-gateway-webapp')]",
     "ayalonWebAppName": "[concat(parameters('serviceName'),'-ayalon-webapp')]",
     "textAnalyticsName": "[concat(parameters('serviceName'),'-ctm-ta')]",
+    // Addresses
+    "redisAddress": "[concat(variables('redisCacheName'),'.redis.cache.windows.net')]",
+    "keyVaultAddress": "[concat('https://',variables('keyVaultName'),'.vault.azure.net/')]",
+    "fhirAddress": "[concat('https://',variables('gatewayWebAppName'), if(parameters('isSecondary'), '-secondary',''),'.azurewebsites.net/fhir/')]",
     // Resource Ids
     "gatewayResourceId": "[resourceId('Microsoft.Web/sites',variables('gatewayWebAppName'))]",
     "queryEngineResourceId": "[resourceId('Microsoft.Web/sites',variables('queryEngineWebAppName'))]",
     "gatewaySecondaryResourceId":"[resourceId('Microsoft.Web/sites/slots',variables('gatewayWebAppName'),'secondary')]",
     "disqualificationResourceId": "[resourceId('Microsoft.Web/sites',variables('disqualificationWebAppName'))]",
-    "structuringResourceId":"[resourceId('Microsoft.ContainerInstance/containerGroups',variables('structuringName'))]",
+    "structuringResourceId": "[resourceId('Microsoft.ContainerInstance/containerGroups',variables('structuringName'))]",
     // Docker Image Names
     "gatewayDockerImageName": "[concat('DOCKER|',parameters('acrServer'),'/clinical-trials-gateway:',parameters('gatewayImageTag'))]",
     "ayalonDockerImageName": "[concat('DOCKER|',parameters('acrServer'),'/cognitive-services-healthcare:',parameters('ta4hImageTag'))]",
@@ -127,7 +131,8 @@
     "structuringImageName": "[concat(parameters('acrServer'),'/clinical-trials-structuring:',parameters('structuringImageTag'))]",
     "constituencyParserImageName": "[concat(parameters('acrServer'),'/constituency-parser-server:',parameters('conParserImageTag'))]",
     // Gateway services
-    "ctti_user_name":"[concat(parameters('postgreSqlAdministratorLogin'),'@',variables('postgresqlServerFullName'),'.postgres.database.azure.com')]",
+    "cttiHost": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]",
+    "cttiUserName":"[concat(parameters('postgreSqlAdministratorLogin'),'@',variables('cttiHost'))]",
     "services": {
       "ta4h":"[concat('https://',variables('ayalonWebAppName'),'.azurewebsites.net')]",
       "qe":  "[concat('https://',variables('queryEngineWebAppName'),'.azurewebsites.net')]", 
@@ -141,7 +146,7 @@
       "fhir": "[concat('https://',parameters('fhirSecondaryServerName'),'.azurewebsites.net/')]"      
     },
     "allowedPaths": "/status,/,/ready,/swagger/*,/metadata",
-    "aci_template_uri": "https://github.com/microsoft/ClinicalTrialsBlueprint/arm-templates/azuredeploy-aci.json"
+    "aciTemplateUri": "https://github.com/microsoft/ClinicalTrialsBlueprint/blob/ronny/config/arm-templates/azuredeploy-aci.json"
   },
   "resources": [
     {
@@ -248,7 +253,7 @@
                 },
                 {
                   "name":"KEYVAULT_URL",
-                  "value":"[concat('https://',variables('keyVaultName'),'.vault.azure.net/')]"
+                  "value":"[variables('keyVaultAddress')]"
                 },
                 {
                   "name":"SERVICES",
@@ -413,7 +418,7 @@
                 },
                 {
                   "name":"KEYVAULT_URL",
-                  "value":"[concat('https://',variables('keyVaultName'),'.vault.azure.net/')]"
+                  "value":"[variables('keyVaultAddress')]"
                 },
                 {
                   "name":"SERVICES",
@@ -865,12 +870,11 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "[variables('aci_template_uri')]",
+          "uri": "[variables('aciTemplateUri')]",
           "contentVersion":"1.0.0.0"
         },
         "parameters": {
           "structuringAciName": {"value": "[variables('structuringName')]"},
-          "resourceTags": {"value": "[parameters('resourceTags')]"},
           "location": {"value": "[resourceGroup().location]"},
           "structuringImageName": {"value": "[variables('structuringImageName')]"},
           "env": {"value": "[parameters('env')]"},
@@ -879,145 +883,21 @@
           "queryRecruitment": {"value": "[parameters('queryRecruitment')]"},
           "querySponsors": {"value": "[parameters('querySponsors')]"},
           "queryConditions": {"value": "[parameters('queryConditions')]"},
-          "keyVaultAddress": {"value": "[concat('https://', variables('keyVaultName'), '.vault.azure.net/')]"},
+          "keyVaultAddress": {"value": "[variables('keyVaultAddress')]"},
           "mapsApiKey": {"value": "[listKeys(variables('mapsServiceName'),'2018-05-01').primaryKey]"},
-          "fhirAddress": {"value": "[if(parameters('isSecondary'), concat('https://',variables('gatewayWebAppName'),'-secondary','.azurewebsites.net/fhir/'),
-                                concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/fhir/'))]"},
+          "fhirAddress": {"value": "[variables('fhirAddress')]"},
           "ayalonAddress": {"value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/')]"},
-          "cttiHost": {"value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"},
-          "cttiUserName":{"value": "[variables('ctti_user_name')]"}, 
+          "cttiHost": {"value": "[variables('cttiHost')]"},
+          "cttiUserName":{"value": "[variables('cttiUserName')]"}, 
           "appInsightsInstrumentationKey": {"value":"[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"},
-          "redisAddress": {"value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"},
-          "finishedNotifyAddress": {"value": "[parameters('finishedNotifyAddress')]"}
+          "redisAddress": {"value":"[variables('redisAddress')]"},
+          "finishedNotifyAddress": {"value": "[parameters('finishedNotifyAddress')]"},
+          "constituencyParserImageName": {"value": "[variables('constituencyParserImageName')]"},
+          "acrServer": {"value": "[parameters('acrServer')]"},
+          "acrUsername": {"value": "[parameters('acrUsername')]"},
+          "acrPassword": {"value": "[parameters('acrPassword')]"},
+          "resourceTags": {"value": "[parameters('resourceTags')]"}
         }
-      }
-    },
-    {
-      delete this and see ACI works fine
-      "name": "[variables('structuringName')]",
-      "type": "Microsoft.ContainerInstance/containerGroups",
-      "apiVersion": "2018-10-01",
-      "tags": "[parameters('resourceTags')]",
-      "location": "[resourceGroup().location]",
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Maps/accounts', variables('mapsServiceName'))]",
-        "[resourceId('Microsoft.Insights/components/', variables('insightsName'))]"      
-      ],
-      "properties": {
-        "containers": [
-          {
-            "name": "structuring",
-            "properties": {
-              "image": "[variables('structuringImageName')]",
-              "command": [
-                "dotnet",
-                "ClinicalTrialsStructuring.dll"
-              ],
-              "environmentVariables": [
-                {
-                  "name": "ASPNETCORE_ENVIRONMENT",
-                  "value": "[parameters('env')]"
-                },
-                {
-                  "name": "query__country",
-                  "value": "[parameters('queryCountry')]"
-                },
-                {
-                  "name": "query__phases",
-                  "value": "[parameters('queryPhases')]"
-                },
-                {
-                  "name": "query__recruitment",
-                  "value": "[parameters('queryRecruitment')]"
-                },
-                {
-                  "name": "query__sponsors",
-                  "value": "[parameters('querySponsors')]"
-                },
-                {
-                  "name": "query__conditions",
-                  "value": "[parameters('queryConditions')]"
-                },
-                {
-                  "name": "key_vault__address",
-                  "value": "[concat('https://', variables('keyVaultName'), '.vault.azure.net/')]"
-                },
-                {
-                  "name": "azure_maps__api_key",
-                  "value": "[listKeys(variables('mapsServiceName'),'2018-05-01').primaryKey]"
-                },
-                {
-                  "name": "fhir__address",
-                  "value": "[if(parameters('isSecondary'), concat('https://',concat(variables('gatewayWebAppName'),'-secondary'),'.azurewebsites.net/fhir/'),
-                                concat('https://',concat(variables('gatewayWebAppName')),'.azurewebsites.net/fhir/'))]"
-                },
-                {
-                  "name": "ayalon__address",
-                  "value": "[concat('https://',variables('gatewayWebAppName'),'.azurewebsites.net/ta4h/')]"
-                },
-                {
-                  "name": "ctti__host",
-                  "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]" 
-                },
-                {
-                  "name": "ctti__user_name",
-                  "value": "[variables('ctti_user_name')]"
-                },
-          			{
-                  "name": "ctti__secret_name",
-                  "value": "ctti-client-secret"
-                },
-                {
-                  "name":"application_insight__instrumentation_key",
-                  "value":"[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"
-                },
-                {
-                  "name":"redis__address",
-                  "value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"
-                },
-                {
-                  "name":"structuring__finished_notifier_address",
-                  "value":"[parameters('finishedNotifyAddress')]"
-                }
-              ],
-              "resources": {
-                "requests": {
-                  "cpu": 2,
-                  "memoryInGB": 4
-                }
-              }
-            }
-          },
-          {
-            "name": "constituency-parser",
-            "properties": {
-              "image": "[variables('constituencyParserImageName')]",
-			  "environmentVariables": [
-                {
-                  "name": "APP_INSIGHT_KEY",
-                  "value": "[reference(variables('insightsName'), '2015-05-01').instrumentationKey]"
-                }],
-              "resources": {
-                "requests": {
-                  "cpu": 2,
-                  "memoryInGB": 4
-                }
-              }
-            }
-          }
-        ],
-        "imageRegistryCredentials": [
-          {
-            "server": "[parameters('acrServer')]",
-            "username": "[parameters('acrUsername')]",
-            "password": "[parameters('acrPassword')]"
-          }
-        ],
-        "restartPolicy": "OnFailure",
-        "osType": "Linux"
       }
     },
     {
@@ -1110,15 +990,15 @@
             },
             {
               "name":"key_vault__address",
-              "value":"[concat('https://',variables('keyVaultName'),'.vault.azure.net/')]"
+              "value":"[variables('keyVaultAddress')]"
             },
             {
                 "name": "ctti__host",
-                "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"
+                "value": "[variables('cttiHost')]"
             },
             {
               "name": "ctti__user_name",
-              "value": "[variables('ctti_user_name')]"         
+              "value": "[variables('cttiUserName')]"         
             },
             {
               "name":"ctti__secret_name",
@@ -1130,7 +1010,7 @@
             },
             {
               "name":"redis__address",
-              "value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"
+              "value":"[variables('redisAddress')]"
             },
             {
               "name":"redis__secret_name",
@@ -1325,15 +1205,15 @@
             },
             {
               "name":"key_vault__address",
-              "value":"[concat('https://',variables('keyVaultName'),'.vault.azure.net/')]"
+              "value":"[variables('keyVaultAddress')]"
             },
             {
               "name": "ctti__host",
-              "value": "[concat(variables('postgresqlServerFullName'),'.postgres.database.azure.com')]"              
+              "value": "[variables('cttiHost')]"              
             },
             {
               "name": "ctti__user_name",
-              "value": "[variables('ctti_user_name')]"         
+              "value": "[variables('cttiUserName')]"         
             },
             {
               "name":"ctti__secret_name",
@@ -1341,7 +1221,7 @@
             },
             {
               "name":"redis__address",
-              "value":"[concat(variables('redisCacheName'),'.redis.cache.windows.net')]"
+              "value":"[variables('redisAddress')]"
             },
             {
               "name":"redis__secret_name",
@@ -1453,41 +1333,41 @@
       }
     },
     {
-        "type": "Microsoft.DBforPostgreSQL/servers",
+      "type": "Microsoft.DBforPostgreSQL/servers",
+      "apiVersion": "2017-12-01",
+      "name": "[variables('postgresqlServerFullName')]",
+      "tags": "[parameters('resourceTags')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "GP_Gen5_4",
+        "tier": "GeneralPurpose",
+        "family": "Gen5",
+        "capacity": 4
+      },
+      "resources": [{
+        "name": "AllowAzureServices",
+        "type": "firewallRules",
         "apiVersion": "2017-12-01",
-        "name": "[variables('postgresqlServerFullName')]",
-        "tags": "[parameters('resourceTags')]",
-        "location": "[resourceGroup().location]",
-        "sku": {
-            "name": "GP_Gen5_4",
-            "tier": "GeneralPurpose",
-            "family": "Gen5",
-            "capacity": 4
-        },
-		    "resources": [{
-                    "name": "AllowAzureServices",
-                    "type": "firewallRules",
-                    "apiVersion": "2017-12-01",
-                    "properties": {
-                        "startIpAddress": "0.0.0.0",
-                        "endIpAddress": "0.0.0.0"
-                    },
-					"dependsOn": [
-					  "[variables('postgresqlServerFullName')]"
-				  ]
-        }],
         "properties": {
-            "administratorLogin": "[parameters('postgreSqlAdministratorLogin')]",
-            "administratorLoginPassword": "[parameters('postgreSqladministratorLoginPassword')]",                
-            "storageProfile": {
-                "storageMB": 102400,
-                "backupRetentionDays": 7,
-                "geoRedundantBackup": "Disabled",
-                "storageAutogrow": "Enabled"
-            },
-            "version": "11",
-            "sslEnforcement": "Disabled"
-        }
+            "startIpAddress": "0.0.0.0",
+            "endIpAddress": "0.0.0.0"
+        },
+        "dependsOn": [
+          "[variables('postgresqlServerFullName')]"
+        ]
+      }],
+      "properties": {
+        "administratorLogin": "[parameters('postgreSqlAdministratorLogin')]",
+        "administratorLoginPassword": "[parameters('postgreSqladministratorLoginPassword')]",                
+        "storageProfile": {
+          "storageMB": 102400,
+          "backupRetentionDays": 7,
+          "geoRedundantBackup": "Disabled",
+          "storageAutogrow": "Enabled"
+        },
+        "version": "11",
+        "sslEnforcement": "Disabled"
+      }
     },
     {
       "name": "[concat('plan-auto-scale',variables('suffix'))]",
