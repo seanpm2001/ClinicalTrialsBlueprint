@@ -98,10 +98,8 @@
     "suffix":"[if(parameters('isSecondary'), '-s','')]",
     "structuringName": "[concat(parameters('serviceName'),'-ctm-struct-aci',variables('suffix'))]",    
     "redisCacheName": "[concat(parameters('serviceName'),'-ctm-redis',variables('suffix'))]",    
-    "queryEngineWebAppBaseName":"[concat(parameters('serviceName'),'-ctm-qe-webapp')]",
-    "queryEngineWebAppName": "[concat(variables('queryEngineWebAppBaseName'),variables('suffix'))]",
-    "disqualificationWebAppBaseName":"[concat(parameters('serviceName'),'-ctm-disq-webapp')]",
-    "disqualificationWebAppName": "[concat(variables('disqualificationWebAppBaseName'),variables('suffix'))]",
+    "queryEngineWebAppName": "[concat(parameters('serviceName'),'-ctm-qe-webapp',variables('suffix'))]",
+    "disqualificationWebAppName": "[concat(parameters('serviceName'),'-ctm-disq-webapp',variables('suffix'))]",
     "postgresqlServerFullName":"[concat(parameters('serviceName'),'-ctm-postgresql',variables('suffix'))]",
     "keyVaultName": "[concat(parameters('serviceName'),'-ctm-kv',variables('suffix'))]",
     // Unique resources
@@ -141,12 +139,12 @@
     },
     "servicesSecondary": {
       "ta4h":"[concat('https://',variables('ayalonWebAppName'),'.azurewebsites.net')]",
-      "qe":  "[concat('https://',variables('queryEngineWebAppBaseName'),'-s.azurewebsites.net')]", 
-      "disq":"[concat('https://',variables('disqualificationWebAppBaseName'),'-s.azurewebsites.net')]", 
+      "qe":  "[concat('https://',variables('queryEngineWebAppName'),'-s.azurewebsites.net')]", 
+      "disq":"[concat('https://',variables('disqualificationWebAppName'),'-s.azurewebsites.net')]", 
       "fhir": "[concat('https://',parameters('fhirSecondaryServerName'),'.azurewebsites.net/')]"      
     },
     "allowedPaths": "/status,/,/ready,/swagger/*,/metadata",
-    "aciTemplateUri": "https://github.com/microsoft/ClinicalTrialsBlueprint/blob/ronny/config/arm-templates/azuredeploy-aci.json"
+    "aciTemplateUri": "https://raw.githubusercontent.com/microsoft/ClinicalTrialsBlueprint/ronny/config/arm-templates/azuredeploy-aci.json"
   },
   "resources": [
     {
@@ -727,7 +725,8 @@
         "[variables('gatewaySecondaryResourceId')]",
         "[variables('queryEngineResourceId')]",
         "[variables('disqualificationResourceId')]",
-        "[variables('structuringResourceId')]"
+        // "[variables('structuringResourceId')]"
+        "[resourceId('Microsoft.Resources/deployments', 'linkedTemplate')]"
       ],
       "properties": {
         "enabledForDeployment": false,
@@ -861,8 +860,8 @@
     },
     {
       "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2019-10-01",
       "name": "linkedTemplate",
+      "apiVersion": "2019-10-01",
       "dependsOn": [
         "[resourceId('Microsoft.Maps/accounts', variables('mapsServiceName'))]",
         "[resourceId('Microsoft.Insights/components/', variables('insightsName'))]"      
