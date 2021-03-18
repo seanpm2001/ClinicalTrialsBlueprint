@@ -878,7 +878,7 @@
               "image": "[variables('structuringImageName')]",
               "command": [
                 "dotnet",
-                "ClinicalTrialsPreprocessing.dll"
+                "Microsoft.Internal.DocumentStructuring.ClinicalTrialsPreprocessing.dll"
               ],
               "environmentVariables": [
                 {
