@@ -876,10 +876,6 @@
             "name": "structuring",
             "properties": {
               "image": "[variables('structuringImageName')]",
-              "command": [
-                "dotnet",
-                "Microsoft.Internal.DocumentStructuring.ClinicalTrialsPreprocessing.dll"
-              ],
               "environmentVariables": [
                 {
                   "name": "ASPNETCORE_ENVIRONMENT",
